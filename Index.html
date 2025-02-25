@@ -487,13 +487,9 @@
         </div>
         <p class="loading-text">Cargando...</p> <!-- Texto "Cargando..." -->
     </div>
-
     <header class="header">
         <h1 class="restaurant-name">Le Gourmet</h1>
         <p class="restaurant-namep">Cocina de Autor</p>
-        <div>
-            Visitas: <span id="contador-visitas">-</span>
-          </div>
     </header>
 <div class="menu-container">
         <nav class="menu-nav" id="menu-nav"></nav>
@@ -545,47 +541,11 @@
     });
   });
 }
-// Función para registrar visita
-async function registrarVisita() {
-    try {
-      // Evitar contar recargas múltiples en la misma sesión
-      const sessionKey = `visitado_${window.location.pathname}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        return;
-      }
-      
-      // Marcar como visitado en esta sesión
-      sessionStorage.setItem(sessionKey, 'true');
-      
-      // Llamar a tu Worker para incrementar el contador
-      const response = await fetch('https://https://holamundo.entitydh.workers.dev/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ path: window.location.pathname })
-      });
-      
-      const data = await response.json();
-      console.log(`Visita registrada. Total: ${data.count}`);
-      
-      // Opcional: Actualizar algún elemento en la página con el contador
-      const contadorElement = document.getElementById('contador-visitas');
-      if (contadorElement) {
-        contadorElement.textContent = data.count;
-      }
-    } catch (error) {
-      console.error('Error al registrar visita:', error);
-    }
-  }
-  
-  // Registrar visita cuando la página está completamente cargada
-  if (document.readyState === 'complete') {
-    registrarVisita();
-  } else {
-    window.addEventListener('load', registrarVisita);
-  }
+fetch("/api/visitas")
+    .then(response => response.json())
+    .then(data => console.log("Visitas registradas:", data.visitas));
     </script>
+    
     <script src="datos.js" defer></script>
 <script src="menu.js" defer></script>
 
