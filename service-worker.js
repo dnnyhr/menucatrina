@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mi-pagina-cache-v9';
+const CACHE_NAME = 'mi-pagina-cache-v9.4';
 const ASSETS = [
   '/',
   '/index.html',
