@@ -1,24 +1,17 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    const menuNav = document.getElementById('menu-nav');
-    const menuContent = document.getElementById('menu-content');
-    const API_URL = "https://yanosecomoponerle.entitydh.workers.dev/menu";
-
-    async function fetchMenu() {
-        try {
-            const response = await fetch(API_URL);
-            if (!response.ok) throw new Error("Error al cargar el menú");
-            return await response.json();
-        } catch (error) {
-            console.error(error);
-            return {};
-        }
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.MENU_CATEGORIES) {
+        console.error("Error: MENU_CATEGORIES no está definido.");
+        return;
     }
 
-    function generateMenu(menuData) {
+    const menuNav = document.getElementById('menu-nav');
+    const menuContent = document.getElementById('menu-content');
+
+    function generateMenu() {
         menuNav.innerHTML = '';
         menuContent.innerHTML = '';
 
-        Object.keys(menuData).forEach((category, index) => {
+        Object.keys(window.MENU_CATEGORIES).forEach((category, index) => {
             const button = document.createElement('button');
             button.classList.add('menu-button');
             if (index === 0) button.classList.add('active');
@@ -27,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.menu-button').forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
-                showCategory(category, menuData);
+                showCategory(category);
             });
             menuNav.appendChild(button);
 
@@ -38,15 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             menuContent.appendChild(section);
         });
 
-        showCategory(Object.keys(menuData)[0], menuData);
+        showCategory(Object.keys(window.MENU_CATEGORIES)[0]);
     }
 
-    function showCategory(category, menuData) {
+    function showCategory(category) {
         document.querySelectorAll('.menu-section').forEach(sec => sec.classList.remove('active'));
         const section = document.getElementById(category);
         section.innerHTML = '';
 
-        menuData[category].forEach(item => {
+        window.MENU_CATEGORIES[category].forEach(item => {
             const menuItem = document.createElement('div');
             menuItem.classList.add('menu-item');
             menuItem.dataset.item = item.id;
@@ -68,12 +61,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function openModal(item) {
+        const modal = document.getElementById('modal');
+    modal.style.display = 'block';
+    // Force reflow
+    modal.offsetHeight;
+    modal.classList.add('active');
+    // ... rest of your modal code
         document.getElementById('modal').style.display = 'block';
         document.getElementById('modal-image').src = item.imagenes[0];
         document.getElementById('modal-title').textContent = item.nombre;
         document.getElementById('modal-price').textContent = `$${item.precio}`;
         document.getElementById('modal-description').textContent = item.descripcion;
         document.getElementById('modal-ingredients').textContent = item.ingredientes.join(', ');
+
         document.body.style.overflow = 'hidden';
     }
 
@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal').style.display = 'none';
         document.body.style.overflow = 'auto';
     });
+    
 
     window.addEventListener('click', (event) => {
         if (event.target.classList.contains('modal')) {
@@ -89,6 +90,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    const menuData = await fetchMenu();
-    generateMenu(menuData);
+    generateMenu();
 });
+document.addEventListener("DOMContentLoaded", function () {
+    // Simula la carga de los platillos (esto debería ser reemplazado por tu lógica de carga real)
+    setTimeout(function () {
+        // Oculta el loader
+        const loader = document.getElementById("loader");
+        loader.classList.add("hidden");
+
+        // Muestra el contenido del menú
+        const menuContent = document.getElementById("menu-content");
+        menuContent.style.display = "block";
+    }, 3000); // Cambia este tiempo por el tiempo real que tarda en cargar los platillos
+});
+
