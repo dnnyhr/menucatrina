@@ -1,17 +1,24 @@
-document.addEventListener('DOMContentLoaded', () => {
-    if (!window.MENU_CATEGORIES) {
-        console.error("Error: MENU_CATEGORIES no está definido.");
-        return;
-    }
-
+document.addEventListener('DOMContentLoaded', async () => {
     const menuNav = document.getElementById('menu-nav');
     const menuContent = document.getElementById('menu-content');
+    const API_URL = "https://yanosecomoponerle.entitydh.workers.dev/menu";
 
-    function generateMenu() {
+    async function fetchMenu() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Error al cargar el menú");
+            return await response.json();
+        } catch (error) {
+            console.error(error);
+            return {};
+        }
+    }
+
+    function generateMenu(menuData) {
         menuNav.innerHTML = '';
         menuContent.innerHTML = '';
 
-        Object.keys(window.MENU_CATEGORIES).forEach((category, index) => {
+        Object.keys(menuData).forEach((category, index) => {
             const button = document.createElement('button');
             button.classList.add('menu-button');
             if (index === 0) button.classList.add('active');
@@ -20,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.menu-button').forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
-                showCategory(category);
+                showCategory(category, menuData);
             });
             menuNav.appendChild(button);
 
@@ -31,15 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
             menuContent.appendChild(section);
         });
 
-        showCategory(Object.keys(window.MENU_CATEGORIES)[0]);
+        showCategory(Object.keys(menuData)[0], menuData);
     }
 
-    function showCategory(category) {
+    function showCategory(category, menuData) {
         document.querySelectorAll('.menu-section').forEach(sec => sec.classList.remove('active'));
         const section = document.getElementById(category);
         section.innerHTML = '';
 
-        window.MENU_CATEGORIES[category].forEach(item => {
+        menuData[category].forEach(item => {
             const menuItem = document.createElement('div');
             menuItem.classList.add('menu-item');
             menuItem.dataset.item = item.id;
@@ -61,19 +68,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openModal(item) {
-        const modal = document.getElementById('modal');
-    modal.style.display = 'block';
-    // Force reflow
-    modal.offsetHeight;
-    modal.classList.add('active');
-    // ... rest of your modal code
         document.getElementById('modal').style.display = 'block';
         document.getElementById('modal-image').src = item.imagenes[0];
         document.getElementById('modal-title').textContent = item.nombre;
         document.getElementById('modal-price').textContent = `$${item.precio}`;
         document.getElementById('modal-description').textContent = item.descripcion;
         document.getElementById('modal-ingredients').textContent = item.ingredientes.join(', ');
-
         document.body.style.overflow = 'hidden';
     }
 
@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modal').style.display = 'none';
         document.body.style.overflow = 'auto';
     });
-    
 
     window.addEventListener('click', (event) => {
         if (event.target.classList.contains('modal')) {
@@ -90,18 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    generateMenu();
+    const menuData = await fetchMenu();
+    generateMenu(menuData);
 });
-document.addEventListener("DOMContentLoaded", function () {
-    // Simula la carga de los platillos (esto debería ser reemplazado por tu lógica de carga real)
-    setTimeout(function () {
-        // Oculta el loader
-        const loader = document.getElementById("loader");
-        loader.classList.add("hidden");
-
-        // Muestra el contenido del menú
-        const menuContent = document.getElementById("menu-content");
-        menuContent.style.display = "block";
-    }, 3000); // Cambia este tiempo por el tiempo real que tarda en cargar los platillos
-});
-
