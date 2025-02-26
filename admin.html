@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración de Menú</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; }
+        label, input, select, button { display: block; margin: 10px 0; }
+        .menu-list { margin-top: 20px; }
+        .menu-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Administración de Menú</h1>
+    <form id="menu-form">
+        <label>Categoría: <input type="text" id="category" required></label>
+        <label>Nombre: <input type="text" id="name" required></label>
+        <label>Descripción: <input type="text" id="description" required></label>
+        <label>Precio: <input type="number" id="price" required></label>
+        <label>Imagen URL: <input type="text" id="image" required></label>
+        <label>Ingredientes: <input type="text" id="ingredients" required></label>
+        <button type="submit">Agregar Platillo</button>
+    </form>
+    <h2>Menú Actual</h2>
+    <div class="menu-list" id="menu-list"></div>
+    <script>
+        const API_URL = "https://yanosecomoponerle.entitydh.workers.dev/menu";
+        
+        async function fetchMenu() {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            const menuList = document.getElementById("menu-list");
+            menuList.innerHTML = "";
+            Object.keys(data).forEach(category => {
+                data[category].forEach(item => {
+                    const div = document.createElement("div");
+                    div.classList.add("menu-item");
+                    div.innerHTML = `<strong>${item.nombre}</strong> - $${item.precio} 
+                        <button onclick="deleteItem('${item.id}')">Eliminar</button>`;
+                    menuList.appendChild(div);
+                });
+            });
+        }
+
+        document.getElementById("menu-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const newItem = {
+                id: Date.now().toString(),
+                category: document.getElementById("category").value,
+                nombre: document.getElementById("name").value,
+                descripcion: document.getElementById("description").value,
+                precio: parseFloat(document.getElementById("price").value),
+                imagenes: [document.getElementById("image").value],
+                ingredientes: document.getElementById("ingredients").value.split(",")
+            };
+            await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newItem)
+            });
+            fetchMenu();
+        });
+
+        async function deleteItem(id) {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+            fetchMenu();
+        }
+
+        fetchMenu();
+    </script>
+</body>
+</html>
