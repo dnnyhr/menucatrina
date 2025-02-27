@@ -1,6 +1,27 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Mostrar el loader
+    const loader = document.getElementById("loader");
+    if (loader) loader.classList.remove("hidden");
+    
+    // Cargar los datos del menú desde la API
+    try {
+        await window.loadMenuData();
+    } catch (error) {
+        console.error("Error al cargar los datos del menú:", error);
+    }
+
     if (!window.MENU_CATEGORIES) {
         console.error("Error: MENU_CATEGORIES no está definido.");
+        
+        // Ocultar el loader si existe
+        if (loader) loader.classList.add("hidden");
+        
+        // Mostrar mensaje de error
+        const menuContent = document.getElementById('menu-content');
+        if (menuContent) {
+            menuContent.innerHTML = '<div class="error-message">No se pudo cargar el menú. Por favor, intenta más tarde.</div>';
+            menuContent.style.display = "block";
+        }
         return;
     }
 
@@ -31,7 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
             menuContent.appendChild(section);
         });
 
-        showCategory(Object.keys(window.MENU_CATEGORIES)[0]);
+        // Mostrar la primera categoría si existe
+        const categories = Object.keys(window.MENU_CATEGORIES);
+        if (categories.length > 0) {
+            showCategory(categories[0]);
+        }
+        
+        // Ocultar el loader y mostrar el contenido
+        if (loader) loader.classList.add("hidden");
+        menuContent.style.display = "block";
     }
 
     function showCategory(category) {
@@ -43,8 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const menuItem = document.createElement('div');
             menuItem.classList.add('menu-item');
             menuItem.dataset.item = item.id;
+            
+            // Verificar si hay imágenes disponibles
+            const imageSrc = item.imagenes && item.imagenes.length > 0 ? 
+                item.imagenes[0] : 'path/to/default-image.jpg';
+                
             menuItem.innerHTML = `
-                <img src="${item.imagenes[0]}" alt="${item.nombre}" class="item-image">
+                <img src="${imageSrc}" alt="${item.nombre}" class="item-image">
                 <div class="item-content">
                     <div class="item-header">
                         <h3 class="item-name">${item.nombre}</h3>
@@ -62,13 +96,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openModal(item) {
         const modal = document.getElementById('modal');
-    modal.style.display = 'block';
-    // Force reflow
-    modal.offsetHeight;
-    modal.classList.add('active');
-    // ... rest of your modal code
-        document.getElementById('modal').style.display = 'block';
-        document.getElementById('modal-image').src = item.imagenes[0];
+        modal.style.display = 'block';
+        // Force reflow
+        modal.offsetHeight;
+        modal.classList.add('active');
+        
+        document.getElementById('modal-image').src = item.imagenes && item.imagenes.length > 0 ? 
+            item.imagenes[0] : 'path/to/default-image.jpg';
         document.getElementById('modal-title').textContent = item.nombre;
         document.getElementById('modal-price').textContent = `$${item.precio}`;
         document.getElementById('modal-description').textContent = item.descripcion;
@@ -81,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modal').style.display = 'none';
         document.body.style.overflow = 'auto';
     });
-    
 
     window.addEventListener('click', (event) => {
         if (event.target.classList.contains('modal')) {
@@ -92,16 +125,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generateMenu();
 });
-document.addEventListener("DOMContentLoaded", function () {
-    // Simula la carga de los platillos (esto debería ser reemplazado por tu lógica de carga real)
-    setTimeout(function () {
-        // Oculta el loader
-        const loader = document.getElementById("loader");
-        loader.classList.add("hidden");
-
-        // Muestra el contenido del menú
-        const menuContent = document.getElementById("menu-content");
-        menuContent.style.display = "block";
-    }, 3000); // Cambia este tiempo por el tiempo real que tarda en cargar los platillos
-});
-

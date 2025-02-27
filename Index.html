@@ -512,36 +512,6 @@
         </div>
     </div>
      <!--  -->
-    <script>
-        // Registra el Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then((registration) => {
-                    console.log('Service Worker registrado con éxito:', registration);
-                })
-                .catch((error) => {
-                    console.log('Error al registrar el Service Worker:', error);
-                });
-        }
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js').then((registration) => {
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed') {
-                            if (navigator.serviceWorker.controller) {
-                                // Hay una nueva versión disponible; se actualiza sin preguntar
-                                console.log('El menú se ha actualizado');
-                                newWorker.postMessage('skipWaiting'); // Activa el nuevo Service Worker
-                                window.location.reload(); // Recarga la página
-                            }
-                        }
-                    });
-                });
-            });
-        }
-    </script>
-    </script>
     
     <script src="datos.js" defer></script>
 <script src="menu.js" defer></script>

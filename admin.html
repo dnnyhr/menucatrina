@@ -3,71 +3,687 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administración de Menú</title>
+    <title>Administrador de Menú</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; }
-        label, input, select, button { display: block; margin: 10px 0; }
-        .menu-list { margin-top: 20px; }
-        .menu-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .modal-active {
+            overflow-y: visible !important;
+        }
+        [v-cloak] {
+            display: none;
+        }
     </style>
 </head>
-<body>
-    <h1>Administración de Menú</h1>
-    <form id="menu-form">
-        <label>Categoría: <input type="text" id="category" required></label>
-        <label>Nombre: <input type="text" id="name" required></label>
-        <label>Descripción: <input type="text" id="description" required></label>
-        <label>Precio: <input type="number" id="price" required></label>
-        <label>Imagen URL: <input type="text" id="image" required></label>
-        <label>Ingredientes: <input type="text" id="ingredients" required></label>
-        <button type="submit">Agregar Platillo</button>
-    </form>
-    <h2>Menú Actual</h2>
-    <div class="menu-list" id="menu-list"></div>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" v-cloak class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="bg-white shadow rounded-lg mb-6 p-4">
+            <h1 class="text-2xl font-bold text-gray-800">Panel de Administración de Menú</h1>
+            <p class="text-gray-600">Gestiona categorías y platillos de tu restaurante</p>
+        </header>
+
+        <!-- Alerts -->
+        <div v-if="alert.show" :class="`mb-4 p-4 rounded-lg ${alert.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`">
+            {{ alert.message }}
+            <button @click="alert.show = false" class="float-right">&times;</button>
+        </div>
+
+        <!-- Secciones principales -->
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Sidebar con categorías -->
+            <div class="w-full md:w-1/4">
+                <div class="bg-white shadow rounded-lg p-4 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Categorías</h2>
+                        <button @click="openModal('category')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">
+                            Agregar
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        <div v-for="category in categories" :key="category.id" 
+                             class="flex justify-between items-center p-2 hover:bg-gray-100 rounded cursor-pointer"
+                             :class="{'bg-blue-100': selectedCategory === category.id}"
+                             @click="selectCategory(category.id)">
+                            <span>{{ category.nombre }}</span>
+                            <div class="flex items-center space-x-2">
+                                <button @click.stop="editCategory(category)" class="text-gray-600 hover:text-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button @click.stop="deleteCategory(category.id)" class="text-gray-600 hover:text-red-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido principal -->
+            <div class="w-full md:w-3/4">
+                <div class="bg-white shadow rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Platillos</h2>
+                        <button @click="openModal('item')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                            Agregar Platillo
+                        </button>
+                    </div>
+                    
+                    <!-- Lista de platillos -->
+                    <div v-if="items.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-for="item in items" :key="item.id" class="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                            <div class="h-40 bg-gray-200 flex items-center justify-center">
+                                <img v-if="item.imagenes && item.imagenes.length > 0" :src="item.imagenes[0]" alt="Imagen del platillo" class="h-full w-full object-cover">
+                                <div v-else class="text-gray-500 text-center p-4">Sin imagen</div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-lg mb-1">{{ item.nombre }}</h3>
+                                <p class="text-sm text-gray-600 mb-2">{{ item.descripcion }}</p>
+                                <p class="font-bold text-blue-600 mb-2">${{ item.precio.toFixed(2) }}</p>
+                                <div class="flex justify-end space-x-2">
+                                    <button @click="editItem(item)" class="text-blue-500 hover:text-blue-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    <button @click="deleteItem(item.id)" class="text-red-500 hover:text-red-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje cuando no hay platillos -->
+                    <div v-else class="py-8 text-center">
+                        <p v-if="selectedCategory" class="text-gray-500">No hay platillos en esta categoría.</p>
+                        <p v-else class="text-gray-500">Selecciona una categoría para ver sus platillos.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para categorías -->
+        <div class="modal" :class="{'opacity-0 pointer-events-none': !modals.categoryModal, 'opacity-100': modals.categoryModal}">
+            <div class="fixed inset-0 bg-black opacity-50"></div>
+            <div class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="bg-white w-full max-w-md mx-auto rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="text-xl font-semibold">{{ isEditing ? 'Editar' : 'Agregar' }} Categoría</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="categoryName">
+                                Nombre de la Categoría
+                            </label>
+                            <input id="categoryName" v-model="categoryForm.nombre" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" placeholder="Nombre de la categoría">
+                        </div>
+                    </div>
+                    <div class="bg-gray-100 p-4 flex justify-end space-x-2">
+                        <button @click="closeModal('category')" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button @click="saveCategory" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para platillos -->
+        <div class="modal" :class="{'opacity-0 pointer-events-none': !modals.itemModal, 'opacity-100': modals.itemModal}">
+            <div class="fixed inset-0 bg-black opacity-50"></div>
+            <div class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="bg-white w-full max-w-xl mx-auto rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="text-xl font-semibold">{{ isEditing ? 'Editar' : 'Agregar' }} Platillo</h3>
+                    </div>
+                    <div class="p-4 max-h-[70vh] overflow-y-auto">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="itemName">
+                                Nombre del Platillo
+                            </label>
+                            <input id="itemName" v-model="itemForm.nombre" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" placeholder="Nombre del platillo">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="itemDesc">
+                                Descripción
+                            </label>
+                            <textarea id="itemDesc" v-model="itemForm.descripcion" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="3" placeholder="Descripción del platillo"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="itemPrice">
+                                Precio
+                            </label>
+                            <input id="itemPrice" v-model="itemForm.precio" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="number" step="0.01" placeholder="Precio del platillo">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="itemCategory">
+                                Categoría
+                            </label>
+                            <select id="itemCategory" v-model="itemForm.categoria" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option v-for="category in categories" :key="category.id" :value="category.nombre">
+                                    {{ category.nombre }}
+                                </option>
+                            </select>
+                            
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="itemImage">
+                                URL de Imagen
+                            </label>
+                            <input id="itemImage" v-model="itemForm.imageUrl" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" placeholder="URL de la imagen">
+                            <div v-if="itemForm.imagenes && itemForm.imagenes.length > 0" class="mt-2">
+                                <div v-for="(img, index) in itemForm.imagenes" :key="index" class="flex items-center mb-2">
+                                    <img :src="img" class="h-10 w-10 object-cover mr-2 rounded">
+                                    <span class="text-sm truncate flex-1">{{ img }}</span>
+                                    <button @click="removeImage(index)" class="text-red-500 hover:text-red-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <button @click="addImage" class="mt-1 text-blue-500 hover:text-blue-700 text-sm">
+                                + Agregar esta imagen
+                            </button>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Ingredientes
+                            </label>
+                            <div v-for="(ing, index) in itemForm.ingredientes" :key="index" class="flex mb-2">
+                                <input v-model="itemForm.ingredientes[index]" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" placeholder="Ingrediente">
+                                <button @click="removeIngredient(index)" class="ml-2 text-red-500 hover:text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <button @click="addIngredient" class="text-blue-500 hover:text-blue-700 text-sm">
+                                + Agregar ingrediente
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-100 p-4 flex justify-end space-x-2">
+                        <button @click="closeModal('item')" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button @click="saveItem" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Delete Modal -->
+        <div class="modal" :class="{'opacity-0 pointer-events-none': !modals.confirmModal, 'opacity-100': modals.confirmModal}">
+            <div class="fixed inset-0 bg-black opacity-50"></div>
+            <div class="fixed inset-0 flex items-center justify-center z-50">
+                <div class="bg-white w-full max-w-md mx-auto rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h3 class="text-xl font-semibold text-red-600">Confirmar Eliminación</h3>
+                    </div>
+                    <div class="p-4">
+                        <p>{{ confirmMessage }}</p>
+                    </div>
+                    <div class="bg-gray-100 p-4 flex justify-end space-x-2">
+                        <button @click="closeModal('confirm')" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button @click="confirmDelete" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.36/vue.global.min.js"></script>
     <script>
-        const API_URL = "https://yanosecomoponerle.entitydh.workers.dev/menu";
-        
-        async function fetchMenu() {
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            const menuList = document.getElementById("menu-list");
-            menuList.innerHTML = "";
-            Object.keys(data).forEach(category => {
-                data[category].forEach(item => {
-                    const div = document.createElement("div");
-                    div.classList.add("menu-item");
-                    div.innerHTML = `<strong>${item.nombre}</strong> - $${item.precio} 
-                        <button onclick="deleteItem('${item.id}')">Eliminar</button>`;
-                    menuList.appendChild(div);
+        const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+        const app = createApp({
+            setup() {
+                // API base URL - actualízala con la URL de tu worker
+                const apiUrl = 'https://yanosecomoponerle.entitydh.workers.dev';
+console.log("API URL:", apiUrl); // Asegurar que apiUrl es correcto
+
+                
+                // Estado de la aplicación
+                const categories = ref([]);
+                const allItems = ref({});
+                const items = ref([]);
+                const selectedCategory = ref('');
+                const isEditing = ref(false);
+                const confirmData = reactive({
+                    type: '',
+                    id: ''
                 });
-            });
+                const confirmMessage = ref('');
+
+                // Estado de los modales
+                const modals = reactive({
+                    categoryModal: false,
+                    itemModal: false,
+                    confirmModal: false,
+                });
+
+                // Formularios
+                const categoryForm = reactive({
+                    id: '',
+                    nombre: ''
+                });
+
+                const itemForm = reactive({
+                    id: '',
+                    nombre: '',
+                    descripcion: '',
+                    precio: '',
+                    categoria: '',
+                    imageUrl: '',
+                    imagenes: [],
+                    ingredientes: []
+                });
+
+                // Alertas
+                const alert = reactive({
+                    show: false,
+                    type: 'success',
+                    message: ''
+                });
+
+                // Funciones para las alertas
+                const showAlert = (message, type = 'success') => {
+                    alert.show = true;
+                    alert.type = type;
+                    alert.message = message;
+                    setTimeout(() => {
+                        alert.show = false;
+                    }, 5000);
+                };
+
+                // Funciones para modales
+                const openModal = (type) => {
+                    resetForms();
+                    isEditing.value = false;
+                    
+                    if (type === 'category') {
+                        modals.categoryModal = true;
+                    } else if (type === 'item') {
+                        // Establecer la categoría seleccionada como predeterminada
+                        if (selectedCategory.value) {
+                            const category = categories.value.find(c => c.id === selectedCategory.value);
+                            if (category) {
+                                itemForm.categoria = category.nombre;
+                            }
+                        }
+                        
+                        // Inicializar ingredientes con un elemento vacío
+                        if (itemForm.ingredientes.length === 0) {
+                            itemForm.ingredientes = [''];
+                        }
+                        
+                        modals.itemModal = true;
+                    }
+                };
+
+                const closeModal = (type) => {
+                    if (type === 'category') {
+                        modals.categoryModal = false;
+                    } else if (type === 'item') {
+                        modals.itemModal = false;
+                    } else if (type === 'confirm') {
+                        modals.confirmModal = false;
+                    }
+                };
+
+                const resetForms = () => {
+                    // Reiniciar formulario de categoría
+                    categoryForm.id = '';
+                    categoryForm.nombre = '';
+                    
+                    // Reiniciar formulario de platillo
+                    itemForm.id = '';
+                    itemForm.nombre = '';
+                    itemForm.descripcion = '';
+                    itemForm.precio = '';
+                    itemForm.categoria = '';
+                    itemForm.imageUrl = '';
+                    itemForm.imagenes = [];
+                    itemForm.ingredientes = [''];
+                };
+
+                // Funciones para categorías
+                const fetchCategories = async () => {
+                    try {
+                        const response = await fetch(`${apiUrl}/api/categories`);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            categories.value = result.data;
+                        } else {
+                            showAlert(result.message || 'Error al cargar categorías', 'error');
+                        }
+                    } catch (error) {
+                        showAlert('Error de conexión al cargar categorías', 'error');
+                        console.error('Error fetching categories:', error);
+                    }
+                };
+
+                const selectCategory = (categoryId) => {
+    selectedCategory.value = categoryId;
+    
+    // Obtener el nombre de la categoría
+    const category = categories.value.find(c => c.id === categoryId);
+    if (category) {
+        items.value = allItems.value[category.nombre] || [];
+        console.log("Platillos cargados en la categoría:", items.value);
+    } else {
+        items.value = [];
+    }
+};
+
+
+               const saveCategory = async () => {
+    try {
+        if (!categoryForm.nombre.trim()) {
+            return showAlert('El nombre de la categoría es obligatorio', 'error');
         }
 
-        document.getElementById("menu-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const newItem = {
-                id: Date.now().toString(),
-                category: document.getElementById("category").value,
-                nombre: document.getElementById("name").value,
-                descripcion: document.getElementById("description").value,
-                precio: parseFloat(document.getElementById("price").value),
-                imagenes: [document.getElementById("image").value],
-                ingredientes: document.getElementById("ingredients").value.split(",")
-            };
-            await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newItem)
-            });
-            fetchMenu();
+        let url = `${apiUrl}/api/categories`;
+        let method = 'POST';
+
+        if (isEditing.value && categoryForm.id) {
+            url = `${apiUrl}/api/categories/${categoryForm.id}`;
+            method = 'PUT';
+        }
+
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(categoryForm)
         });
 
-        async function deleteItem(id) {
-            await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-            fetchMenu();
-        }
+        const result = await response.json();
+        console.log("Respuesta al guardar categoría:", result);
 
-        fetchMenu();
+        if (result.success) {
+            showAlert(isEditing.value ? "Categoría actualizada" : "Categoría agregada");
+            closeModal('category');
+
+            // 🔄 Recargar las categorías después de agregar una nueva
+            await fetchCategories();
+        } else {
+            showAlert(result.message || "Error al guardar la categoría", "error");
+        }
+    } catch (error) {
+        showAlert("Error de conexión", "error");
+        console.error("Error saving category:", error);
+    }
+};
+
+
+                const editCategory = (category) => {
+                    categoryForm.id = category.id;
+                    categoryForm.nombre = category.nombre;
+                    isEditing.value = true;
+                    modals.categoryModal = true;
+                };
+
+                const deleteCategory = (categoryId) => {
+                    confirmData.type = 'category';
+                    confirmData.id = categoryId;
+                    confirmMessage.value = '¿Estás seguro de que deseas eliminar esta categoría? Se eliminarán todos los platillos asociados.';
+                    modals.confirmModal = true;
+                };
+
+                // Funciones para platillos
+                const fetchItems = async () => {
+                    try {
+                        const response = await fetch(`${apiUrl}/api/items`);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            allItems.value = result.data;
+                            
+                            // Actualizar los platillos si hay una categoría seleccionada
+                            if (selectedCategory.value) {
+                                const category = categories.value.find(c => c.id === selectedCategory.value);
+                                if (category) {
+                                    items.value = allItems.value.filter(item => item.categoria === category.nombre);
+                                } else {
+                                    items.value = [];
+                                }
+                            }
+                        } else {
+                            showAlert(result.message || 'Error al cargar platillos', 'error');
+                        }
+                    } catch (error) {
+                        showAlert('Error de conexión al cargar platillos', 'error');
+                        console.error('Error fetching items:', error);
+                    }
+                };
+
+                const saveItem = async () => {
+                    try {
+                        // Validaciones básicas
+                        if (!itemForm.nombre.trim()) {
+                            return showAlert('El nombre del platillo es obligatorio', 'error');
+                        }
+                        if (!itemForm.descripcion.trim()) {
+                            return showAlert('La descripción del platillo es obligatoria', 'error');
+                        }
+                        if (!itemForm.precio || isNaN(parseFloat(itemForm.precio))) {
+                            return showAlert('El precio debe ser un número válido', 'error');
+                        }
+                        if (!itemForm.categoria) {
+                            return showAlert('Debes seleccionar una categoría', 'error');
+                        }
+                        if (!itemForm.ingredientes.length || !itemForm.ingredientes.some(ing => ing.trim())) {
+                            return showAlert('Debe haber al menos un ingrediente', 'error');
+                        }
+                        
+                        // Eliminar ingredientes vacíos
+                        itemForm.ingredientes = itemForm.ingredientes.filter(ing => ing.trim());
+                        
+                        let url = `${apiUrl}/api/items`;
+                        let method = 'POST';
+                        
+                        if (isEditing.value && itemForm.id) {
+                            url = `${apiUrl}/api/items/${itemForm.id}`;
+                            method = 'PUT';
+                        }
+                        
+                        const payload = {
+                            id: itemForm.id,
+                            nombre: itemForm.nombre,
+                            descripcion: itemForm.descripcion,
+                            precio: parseFloat(itemForm.precio),
+                            categoria: itemForm.categoria,
+                            imagenes: itemForm.imagenes,
+                            ingredientes: itemForm.ingredientes
+                        };
+                        
+                        const response = await fetch(url, {
+                            method,
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            await fetchItems();
+                            closeModal('item');
+                            showAlert(isEditing.value ? 'Platillo actualizado correctamente' : 'Platillo creado correctamente');
+                        } else {
+                            showAlert(result.message || 'Error al guardar el platillo', 'error');
+                        }
+                    } catch (error) {
+                        showAlert('Error de conexión', 'error');
+                        console.error('Error saving item:', error);
+                    }
+                };
+
+                const editItem = (item) => {
+                    itemForm.id = item.id;
+                    itemForm.nombre = item.nombre;
+                    itemForm.descripcion = item.descripcion;
+                    itemForm.precio = item.precio;
+                    itemForm.categoria = getCategoryNameById(selectedCategory.value);
+                    itemForm.imagenes = [...item.imagenes] || [];
+                    itemForm.ingredientes = [...item.ingredientes] || [''];
+                    isEditing.value = true;
+                    modals.itemModal = true;
+                };
+
+                const deleteItem = (itemId) => {
+                    confirmData.type = 'item';
+                    confirmData.id = itemId;
+                    confirmMessage.value = '¿Estás seguro de que deseas eliminar este platillo?';
+                    modals.confirmModal = true;
+                };
+
+                const confirmDelete = async () => {
+                    try {
+                        let url;
+                        
+                        if (confirmData.type === 'category') {
+                            url = `${apiUrl}/api/categories/${confirmData.id}`;
+                        } else if (confirmData.type === 'item') {
+                            url = `${apiUrl}/api/items/${confirmData.id}`;
+                        }
+                        
+                        const response = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            if (confirmData.type === 'category') {
+                                await fetchCategories();
+                                if (selectedCategory.value === confirmData.id) {
+                                    selectedCategory.value = '';
+                                    items.value = [];
+                                }
+                                showAlert('Categoría eliminada correctamente');
+                            } else if (confirmData.type === 'item') {
+                                await fetchItems();
+                                showAlert('Platillo eliminado correctamente');
+                            }
+                            
+                            closeModal('confirm');
+                        } else {
+                            showAlert(result.message || `Error al eliminar ${confirmData.type === 'category' ? 'la categoría' : 'el platillo'}`, 'error');
+                        }
+                    } catch (error) {
+                        showAlert('Error de conexión', 'error');
+                        console.error('Error confirming delete:', error);
+                    }
+                };
+
+                // Funciones para ingredientes e imágenes
+                const addIngredient = () => {
+                    itemForm.ingredientes.push('');
+                };
+
+                const removeIngredient = (index) => {
+                    itemForm.ingredientes.splice(index, 1);
+                    // Asegurar que siempre haya al menos un ingrediente
+                    if (itemForm.ingredientes.length === 0) {
+                        itemForm.ingredientes.push('');
+                    }
+                };
+
+                const addImage = () => {
+                    if (itemForm.imageUrl.trim()) {
+                        // Evitar duplicados
+                        if (!itemForm.imagenes.includes(itemForm.imageUrl)) {
+                            itemForm.imagenes.push(itemForm.imageUrl);
+                        }
+                        itemForm.imageUrl = '';
+                    } else {
+                        showAlert('La URL de la imagen no puede estar vacía', 'error');
+                    }
+                };
+
+                const removeImage = (index) => {
+                    itemForm.imagenes.splice(index, 1);
+                };
+
+                // Función auxiliar para obtener el nombre de la categoría por ID
+                const getCategoryNameById = (categoryId) => {
+                    const category = categories.value.find(c => c.id === categoryId);
+                    return category ? category.nombre : '';
+                };
+
+                // Inicializar la aplicación
+                onMounted(async () => {
+                    await fetchCategories();
+                    await fetchItems();
+                });
+
+                return {
+                    // Estado
+                    categories,
+                    items,
+                    selectedCategory,
+                    isEditing,
+                    alert,
+                    modals,
+                    confirmMessage,
+                    
+                    // Formularios
+                    categoryForm,
+                    itemForm,
+                    
+                    // Funciones de categorías
+                    fetchCategories,
+                    selectCategory,
+                    saveCategory,
+                    editCategory,
+                    deleteCategory,
+                    
+                    // Funciones de platillos
+                    fetchItems,
+                    saveItem,
+                    editItem,
+                    deleteItem,
+                    
+                    // Funciones de modal
+                    openModal,
+                    closeModal,
+                    
+                    // Funciones de eliminación
+                    confirmDelete,
+                    
+                    // Funciones de ingredientes e imágenes
+                    addIngredient,
+                    removeIngredient,
+                    addImage,
+                    removeImage
+                };
+            }
+        }).mount('#app');
     </script>
 </body>
 </html>
