@@ -122,6 +122,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.style.overflow = 'auto';
         }
     });
-
     generateMenu();
 });

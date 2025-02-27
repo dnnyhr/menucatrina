@@ -1,6 +1,5 @@
 // Reemplaza el contenido de datos.js con esto
 window.MENU_API_URL = 'https://yanosecomoponerle.entitydh.workers.dev'; // Reemplaza con la URL de tu worker
-
 // Función para cargar las categorías y platillos desde la API
 window.loadMenuData = async function() {
     try {
